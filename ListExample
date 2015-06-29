@@ -1,0 +1,141 @@
+/** @author Kevin A George
+ *  Example to illustrate a singly linked list.
+ *  Whenever possible, it is better to use data structures from Java's library.
+ *  This program is for instructional purpose only.
+ */
+
+import java.util.Iterator;
+import java.lang.Exception;
+
+/** ListExample class implements a singly linked list with addFront() and iterator */
+public class ListExample<T> implements Iterable<T> {
+    private Node<T> header;  // dummy header node that points to the actual list
+    private int size; // Number of elements in the list
+
+    /** Constructor: creates a dummy header node and initializes an empty list */
+    ListExample() { header = new Node<>(null);  header.next = null; size = 0; }
+
+    /** Implement iterator() for the class to be able to use foreach loop */
+    public Iterator<T> iterator() { return new ListIterator<T>(header); }
+
+    /** Add a new element at the front of the list.  After operation, header
+	points to the new node and the node points to the previous list
+	@param : x
+    */
+    public void addFront(T x) {
+	Node<T> n = new Node<>(x);
+	n.next = header.next;
+	header.next = n;
+	size++;
+    }
+
+    /** Are there any elements in the list?
+     *  @param :
+     */
+    public boolean isEmpty() { return size == 0; }
+
+    /** Return the size of the list
+     *  @param : 
+     */
+    public int size() { return size; }
+
+
+    /** A single node in the list.  It has a data item and a pointer to the next node in the list
+     *  Can use <T>, but this T is not the same as the T in ListExample class
+     */
+    private class Node<E> {  
+	E data;
+	Node<E> next;
+	Node(E x) { data = x; }
+    }
+
+    /** Iterator for the list class.  Does not check for concurrent modification exception
+     *  Since it is singly linked, remove operation requires reference to previous element
+     */
+    private class ListIterator<E> implements Iterator<E> {
+	Node<E> prev; // Previous node to cursor
+	Node<E> cur;  // cursor
+	ListIterator(Node<E> node) { cur = node; prev = null; }
+	public boolean hasNext() { return cur.next != null; }
+	public E next() { prev = cur;  cur = cur.next;  return cur.data; }
+	public void remove() {
+	    if(prev == null) { // throw exception
+		throw new IllegalStateException("Current item has already been deleted.");
+	    } else {
+		prev.next = cur.next;  // cut the current element out of the list
+		cur = prev;  // when next() is called, it should to next element; set cursor at prev
+		prev = null;  // since element has been removed, we should not allow another remove
+		size--;
+	    }
+	}
+    }
+
+    /** Sample driver program */
+    public static void main(String[] args) {
+	ListExample<Integer> list = new ListExample<>();
+	// Add 1..7 to the list.  Since it adds to front, the numbers will be in descending order
+	System.out.println("Adding the elements 1..7");
+	for(int i=1; i<=7; i++) {
+	    Integer x = new Integer(i);
+	    list.addFront(x);
+	}
+
+	// Iterate through the list, print out its elements, and delete the odd numbers
+	System.out.print("List: ");
+	Iterator<Integer> iter = list.iterator();
+	while(iter.hasNext()) {
+	    Integer x = iter.next();
+	    System.out.print(x + " ");
+	    int i = x.intValue();
+	    if(i%2 == 1) { iter.remove(); }
+	}
+	System.out.println();
+
+	// The list should now have just the even numbers
+	System.out.print("List after deleting odd elements: ");
+	for(Integer x: list) {
+	    System.out.print(x + " ");
+	}
+
+	// Nested for loops is fine
+	System.out.println("\nNested for loops: ");
+	for(Integer x: list) {
+	    for(Integer y: list) {
+		System.out.println(x + " " + y);
+	    }
+	}
+
+	// Deleting all elements in a while loop
+	iter = list.iterator();
+	while(iter.hasNext()) {
+	    Integer x = iter.next();
+	    System.out.println("Deleting " + x);
+	    iter.remove();
+	}
+	System.out.println("Size of final list: " + list.size());
+
+    }
+}
+
+
+/* Output:
+> javac ListExample.java 
+> java ListExample 
+Adding the elements 1..7
+List: 7 6 5 4 3 2 1 
+List after deleting odd elements: 6 4 2 
+Nested for loops: 
+6 6
+6 4
+6 2
+4 6
+4 4
+4 2
+2 6
+2 4
+2 2
+Deleting 6
+Deleting 4
+Deleting 2
+Size of final list: 0
+*/
