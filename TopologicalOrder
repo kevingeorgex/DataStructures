@@ -1,0 +1,143 @@
+import java.util.LinkedList;
+import java.util.Stack;
+/**
+ * 
+ * @author Rohini Yadav
+ * Class which computes the topological order of a given graph by two ways
+ * Algorithm 1  - using the indegree of all the vertices
+ * Algorithm 2 - using the DFS on Graph
+ *
+ */
+public class TopologicalOrder {
+		
+	/**
+	 * Function for computing topological order of a graph by using Algorithm 1
+	 * It considers a vertex u with indegree (incoming flows) 0, then virtually removes that from
+	 *  the graph, by decrementing the indegree of the adjacent vertices of u
+	 * @param g : Input graph whose topological order needs to be computed
+	 * @return List of the vertices in topological order
+	 */
+	public static LinkedList<Graph.Vertex> topologicalOrder1(Graph g){
+		
+		//computing the indegree of each vertex in the graph
+		for (Graph.Vertex u : g) {
+			for (Graph.Edge e : u.Adj) {
+				Graph.Vertex v = e.To;
+				v.indegree++;
+			}
+		}
+		
+		//Queue for storing vertices
+		LinkedList<Graph.Vertex> q = new LinkedList<Graph.Vertex>();
+		
+		//Vertex to be added in queue whose indegree = 0
+		for (Graph.Vertex u : g) {
+			if(u.indegree == 0){
+				q.add(u);
+			}
+		}
+		
+		int countOfProcessedVertices = 0;
+		LinkedList <Graph.Vertex> topologicalOrder = new LinkedList<Graph.Vertex>();
+		
+		while(!q.isEmpty()){
+			//Get the vertex from the queue
+			Graph.Vertex u = q.remove();
+			//Add the vertex with indegree 0 into the topological list
+			topologicalOrder.add(u);
+			//Increment the processed vertices to check if the graph is DAG or not
+			countOfProcessedVertices++;
+			//For all the adjacent nodes of vertex u, decrement its indegree
+			for (Graph.Edge e : u.Adj) {
+				//In the directed edge get the vertex v in u->v edge 
+				Graph.Vertex v = e.To;
+				v.indegree--; //decrement the indegree of the vertex, as u is removed from the graph
+				
+				//Add to queue if the indegree  = 0
+				if(v.indegree == 0){
+					q.add(v);
+				}
+			}
+		}
+		//If count of processed vertices is not equal to the number of vertices then raise exception that not a DAG
+		if(countOfProcessedVertices != g.N){
+			try {
+				throw new NotDAGException("The graph is not Directed Acyclic Graph");
+			} catch (Exception e) {
+				System.out.println(e);
+			}
+		}
+		
+		return topologicalOrder;
+	}
+	 
+	/**
+	 * Function to get the topological order of the graph g by using DFS
+	 * @param g : Graph g whose topological order is to be computed
+	 * @return Stack with topological order of the graph g
+	 */
+	public static Stack<Graph.Vertex> topologicalOrder2(Graph g){
+		//Initialization of the graph
+		for (Graph.Vertex u : g) {
+			u.seen = false;
+			u.active = false;
+		}
+		
+		//Stack fot pushing the vertices in topological order
+		Stack<Graph.Vertex> s = new Stack<Graph.Vertex>();
+		for (Graph.Vertex u : g) {
+			if(!u.seen){//If the vertex is not seen then visit the vertex's adjacent vertices in DFS way
+				dfsVisit(s,u);
+			}
+		}
+		return s;
+	}
+	
+	/**
+	 * Function to visit the vertices in DFS order
+	 * @param s : Stack for pushing the vertex u
+	 * @param u : Active vertex whose adjacent vertices are to be considered  
+	 */
+	public static void dfsVisit(Stack<Graph.Vertex>s, Graph.Vertex u){
+		u.seen = true;
+		u.active = true;
+		
+		for (Graph.Edge e : u.Adj) {
+			Graph.Vertex v = e.To;
+			if(!v.seen){
+				dfsVisit(s, v);//Visit the vertices in DFS order
+			}else if(v.active){//Graph is not DAG raise exception
+				try {
+					throw new NotDAGException("The graph is not Directed Acyclic Graph");
+				} catch (NotDAGException e1) {
+					System.out.println(e);
+				}
+			}
+		}
+		
+		s.push(u);//Push the vertex u in the topological stack and make it inactive
+		u.active = false;
+	}
+	
+	/**
+	 * Function to display the topological order by Algorithm 1
+	 * @param topologicalOrder1List : List to display
+	 */
+	public static void dispTopologicalOrder1(LinkedList<Graph.Vertex> topologicalOrder1List){
+		System.out.println("Topological Order : ");
+		for (Graph.Vertex v : topologicalOrder1List) {
+			System.out.print(" "+v);
+		}
+	}
+	/**
+	 * Function to display the topological order by Algorithm 2 by DFS
+	 * @param topologicalOrder2Stack : Stack to be printed
+	 */
+	public static void dispTopologicalOrder2(Stack<Graph.Vertex> topologicalOrder2Stack){
+		System.out.println("Topological Order : ");
+		while(!topologicalOrder2Stack.isEmpty()) {
+			Graph.Vertex v = topologicalOrder2Stack.pop();
+			System.out.print(" "+v);
+		}
+	}
+}
