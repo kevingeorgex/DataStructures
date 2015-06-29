@@ -1,0 +1,293 @@
+/*
+ * Author Kevin A George
+ * Program for finding critical paths
+	in PERT charts (DAGs representing projects).
+	
+	Abstract:
+Implement the algorithms for finding critical paths in PERT charts (DAGs representing projects).
+Problem Statement:
+The critical path is the sequence of activities with the longest duration. A delay in any of these activities will result in a delay for the whole project. First line of input may have a comment (if line starts with a #). First line of the actual input has N, the number of tasks, and C, the number of precedence constraints. The next N integers are the durations of the tasks. There may be arbitrary line breaks. Then the next C lines that follows has 2 integers, gives a precedence constraint between 2 tasks. Tasks are numbered 1 to N. For each critical path, print a path number followed by a ":", and its nodes. Finally, output the earliest possible completion time, the latest completion time (without delaying project completion), and it is slack.
+ */
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+
+public class CriticalPaths {
+
+	private int phase = 0;
+	private long startTime, endTime, elapsedTime;
+	private static int time,counter,nextTop;
+	private static int slackcounter=0,criticalpathcounter=0;
+	private static Graph.Vertex[] top;
+	private static int maxvalue =0;
+	private static Graph.Vertex[] slackarray;
+	private static List<Graph.Vertex> endvertices;
+	
+	
+	public static void main(String[] args) throws FileNotFoundException
+	{
+		Scanner in;
+		endvertices =new ArrayList<Graph.Vertex>(); 	// Array list to store all the vertices with maximum EC value 
+		
+		if (args.length > 0) {
+			in = new Scanner(new File(args[0]));
+		} else {
+			in = new Scanner(System.in);
+		}
+		CriticalPaths x = new CriticalPaths();
+		x.timer();
+		Graph g = Graph.readGraph(in);
+		top = new Graph.Vertex[g.N+1];					// Contains topological ordering of vertices
+		slackarray =new Graph.Vertex[g.N+1];			// Contains all the nodes with slack as zero
+		
+		topologicalSort(g);     // Sorting the vertices topologically
+		
+		findTimes(g);     // Finding EC,LC,slack of all vertices
+		
+		System.out.println("------------------");
+		Graph.Vertex v;
+		int j=1;
+		
+		for(int i=1;i<=g.N;i++)     // This loop populates slack array with all nodes whose slack =0
+		{
+			if(top[i].slack==0)
+				{
+				slackarray[j]=top[i];
+				j++;
+				}
+		}
+		
+	    System.out.println("Critical Paths\n");
+		
+		List<Graph.Vertex> vertexList = new ArrayList<Graph.Vertex>();  // This list is used to store a critical path
+	
+	
+		for(int i=1;i<=slackcounter;i++)
+		{
+			Boolean flag =false;            //   This flag is used to identify all path starting nodes 
+			Graph.Vertex u= slackarray[i];
+			for(Graph.Edge e:u.Adj)
+			{
+				if(e.To.equals(u))           
+					flag=true;
+			}
+			if(flag==false)
+			DFS_VISIT(u,vertexList);      // calling DFS through slack array to find critical paths
+			vertexList.clear();
+		}
+		
+		System.out.println();
+		System.out.println(maxvalue+" "+slackcounter+" "+criticalpathcounter);   // Printing the output
+		System.out.println();
+		
+		System.out.println("Task\tEC\tLC\tSlack");
+		
+		for(int i=1;i<=g.N;i++)
+		{
+			System.out.println(g.V[i].name+"\t"+g.V[i].EC+"\t"+g.V[i].LC+"\t"+g.V[i].slack);
+		}
+		x.timer();
+	}
+
+/*
+ * Function that does a DFS through the slack array
+ * @param: vertex, vertexlist
+ */
+	private static void DFS_VISIT(Graph.Vertex u,List<Graph.Vertex> vertexList) 
+	{
+		vertexList.add(u);
+		for (Graph.Edge e : u.Adj) {
+			Graph.Vertex v = e.To;
+			if (e.From.equals(u) && v.top > u.top) {
+				if (v.slack == 0) {
+					DFS_VISIT(v, vertexList);
+					vertexList.remove(v);    // For backtracking
+				}
+			}
+		}
+		if (endvertices.contains(u))     // It means thats a valid path
+		{	
+		
+			int sum = 0;
+			for(Graph.Vertex v:vertexList)
+			{
+				sum=sum+v.duration;
+			}
+		
+			if(sum==maxvalue)       //  And a valid path with maximum EC value is a critical path
+			{
+				System.out.print(criticalpathcounter+1+": ");
+				System.out.println(vertexList.toString());
+						
+				criticalpathcounter++;
+			}	
+		} 
+	}
+
+/*
+ * 	This function finds the EC,LC and slack of all vertices
+ * @param: Graph g
+ */
+	private static void findTimes(Graph g) 
+	{
+		Graph.Vertex v;
+		int ECS =0;	             // Earliest completion time of starting node or source node = 0,Base case 
+		int ECT =0,LCT=0;		// Earliest completion time and Late completion time
+		for(int i=1;i<=g.N;i++)
+		{
+			v=top[i];
+			
+			if(v.seen==false)      // This flag is used to check nodes from which a path can start
+			{
+				v.EC= ECS+v.duration ;
+				if(v.EC > maxvalue )            
+					maxvalue = v.EC;
+				v.seen = true;
+			}
+			for(Graph.Edge e:v.Adj)         
+			{
+				if(e.From.equals(v))                 // updating EC values of all vertices
+				{
+					if(e.To.EC < e.From.EC + e.To.duration)
+					{
+						e.To.EC =e.From.EC + e.To.duration ;
+						if(e.To.EC > maxvalue )				 // Loop to find the longest earliest completion time which is stored in max value.
+							maxvalue = e.To.EC;
+						e.To.seen =true;
+					}
+				}
+			}
+		}
+ 
+		for(int i =1;i<=g.N;i++)              // Loop to find the ending set of vertices
+		{
+			if(top[i].EC==maxvalue)
+			{
+				endvertices.add(top[i]);       // Adding to array list
+			}
+			
+		}
+		ECT = maxvalue;  // Earliest completion time of final vertex + 0
+		LCT = ECT ;		// Condition
+		
+		for(int i=1;i<=g.N;i++)   // Assigning all nodes to false
+		{
+			v=top[i];
+			v.seen =false;
+			v.LC = Integer.MAX_VALUE ;       // Initializing
+		}
+		
+		for(int i = g.N;i>=1;i--)   // Calculating in the reverse order
+		{
+			v= top[i];
+			
+			if(v.seen==false)
+			{
+				v.LC = LCT - 0; 
+				v.slack = v.LC-v.EC;
+				v.seen =true;
+				
+			}
+			
+			for(Graph.Edge e:v.Adj)              // Assigning LC values to all nodes
+			{
+				if(e.To.equals(v))
+				{
+					if(e.From.LC > e.To.LC-e.To.duration)
+					{
+						e.From.LC = e.To.LC - e.To.duration ;
+						e.From.slack = e.From.LC - e.From.EC ;
+						
+						e.From.seen =true;
+					}
+				}
+			}
+		}
+		
+		for(int i=1;i<=g.N;i++)     // Loop to count the number of slack nodes
+		{
+			if(g.V[i].slack==0)
+				slackcounter++;
+		}		
+		
+	}
+
+	
+/*
+ * Method to find the topological sort of vertices	
+ * @param: object of Graph
+ */
+	private static Graph.Vertex[] topologicalSort(Graph g) 
+	{
+		
+		for(int i=1;i<=g.N;i++)
+		{
+			g.V[i].color= "white";
+			g.V[i].parent = null;
+			time=0;
+			counter=0;
+			nextTop = g.N;
+		}
+		for(int i=1;i<=g.N;i++)
+		{
+			if(g.V[i].color.equals("white"))
+				DFSVisit(g,g.V[i]);
+		}
+	return top;
+	}
+
+
+/*
+ *  Method to run a DFS through the graph
+ *  @param: g,vertex
+ */
+	private static void DFSVisit(Graph g, Graph.Vertex vertex) 
+	{
+		vertex.color ="grey";
+		vertex.discoverytime= ++time;
+		vertex.order = ++counter;
+		
+		for(Graph.Edge e:vertex.Adj)
+		{
+			if(e.From.equals(vertex))
+			{
+				if(e.To.color.equals("white"))
+				{
+					e.To.parent = vertex;
+				     DFSVisit(g,e.To);
+				}    
+			}
+			
+		}
+	 top[nextTop]=vertex;
+	 vertex.top = nextTop;
+	 nextTop = nextTop -1;
+	 
+	 vertex.color ="black";
+	 vertex.finishtime= ++time ;	
+	}
+
+	public void timer() {
+		if (phase == 0) {
+			startTime = System.currentTimeMillis();
+			phase = 1;
+		} else {
+			endTime = System.currentTimeMillis();
+			elapsedTime = endTime - startTime;
+			System.out.println("Time: " + elapsedTime + " msec.");
+			memory();
+			phase = 0;
+		}
+	}
+	
+	public void memory() {
+		long memAvailable = Runtime.getRuntime().totalMemory();
+		long memUsed = memAvailable - Runtime.getRuntime().freeMemory();
+		System.out.println("Memory: " + memUsed / 1000000 + " MB / "
+				+ memAvailable / 1000000 + " MB.");
+	}
+	
+}
